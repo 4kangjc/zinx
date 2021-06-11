@@ -11,7 +11,9 @@ type Server struct {
 	IPversion string
 	IP string
 	Port int
+	Router ziface.IRouter
 }
+
 
 func (s *Server) Start() {
 	go func() {
@@ -26,28 +28,19 @@ func (s *Server) Start() {
 			fmt.Println("listen ", s.IPversion, " err ", err)
 			return
 		}
-		fmt.Printf("start Zinx server successful ", s.Name, "Listenning...")
+		fmt.Println("start Zinx server successful ", s.Name, "Listening...")
+		var cid uint32
 		for {
 			conn, err := listener.AcceptTCP()
 			if err != nil {
 				fmt.Println("Accept err", err)
 				continue
 			}
-			go func() {
-				buf := make([]byte, 512)
-				for {
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("recv buf err", err)
-						continue
-					}
-					fmt.Printf("recv buf is %s\n", buf)
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back buf err", err)
-						continue
-					}
-				}
-			}()
+			dealConn := NewConnection(conn, cid, s.Router)
+			cid++
+			//go dealConn.Start()
+			dealConn.Start()
+
 		}
 	}()
 }
@@ -61,6 +54,10 @@ func (s *Server) Server() {
 	select {}
 }
 
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
+	fmt.Println("Add Router Successful!!!")
+}
 
 func NewServer(name string) ziface.IServer {
 	s := &Server {
@@ -68,6 +65,7 @@ func NewServer(name string) ziface.IServer {
 		IPversion: "tcp4",
 		IP: "0.0.0.0",
 		Port: 8999,
+		Router: nil,
 	}
 	return s
 }
